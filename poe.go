@@ -18,9 +18,10 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/Sirupsen/logrus"
 	"github.com/conseweb/poe/api"
 	"github.com/parnurzeal/gorequest"
-	"github.com/Sirupsen/logrus"
 )
 
 const (
@@ -35,24 +36,24 @@ const (
 func proof2POE() {
 	for {
 		select {
-		case fi := <- waitFiles:
-			finfo := fi.String()
-			docId := docRegister(*wp, finfo)
+		case fi := <-waitFiles:
+			docId := docRegister(*wp, fi)
 
-			logrus.Infof("%s -> %s", docId, finfo)
+			logrus.Infof("%s -> %s", docId, fi.Sha256)
 			wg.Done()
 		}
 	}
 }
 
-func docRegister(wp, data string) string {
+func docRegister(wp string, fi *FileInfo) string {
 	submitResp := new(api.DocumentSubmitResponse)
 	_, _, errs := gorequest.New().Post(fmt.Sprintf("%s%s", *hostpoe, api_doc_reg)).Type("json").Send(map[string]string{
 		"proofWaitPeriod": wp,
-		"rawDocument":     data,
+		"rawDocument":     fi.Raw(),
+		"metadata":        fi.Metadata(),
 	}).EndStruct(submitResp)
 	if len(errs) != 0 {
-		panic(errs[0])
+		logrus.Panic(errs[0])
 	}
 
 	return submitResp.DocumentID

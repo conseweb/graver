@@ -17,11 +17,11 @@ limitations under the License.
 package main
 
 import (
-	"strings"
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
-	"crypto/sha1"
-	"os"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 
@@ -29,31 +29,39 @@ import (
 )
 
 type FileInfo struct {
-	Name string
-	Size int64
-	Hash string
+	Name         string `json:"name"`
+	Size         int64  `json:"size"`
+	LastModified int64  `json:"lastModified"`
+	Type         string `json:"type"`
+	Desc         string `json:"desc"`
+	Sha256       string `json:"sha256"`
 }
 
-func (this *FileInfo) String() string {
-	return strings.Join([]string{
-		this.Name,
-		this.Hash,
-		fmt.Sprintf("%v", this.Size),
-	}, ",")
+func (fi *FileInfo) Metadata() string {
+	fiBytes, err := json.Marshal(fi)
+	if err != nil {
+		logrus.Panic(err)
+	}
+
+	return string(fiBytes)
 }
 
-func FileSha1(fpath string) string {
+func (fi *FileInfo) Raw() string {
+	return fmt.Sprintf("%s:%d", fi.Sha256, fi.Size)
+}
+
+func FileSha256(fpath string) string {
 	file, err := os.Open(fpath)
 	if err != nil {
-		return ""
+		logrus.Panic(err)
 	}
 
-	sha1N := sha1.New()
-	if _, err := io.Copy(sha1N, file); err != nil {
-		return ""
+	shaN := sha256.New()
+	if _, err := io.Copy(shaN, file); err != nil {
+		logrus.Panic(err)
 	}
 
-	return fmt.Sprintf("%x", sha1N.Sum(nil))
+	return fmt.Sprintf("%x", shaN.Sum(nil))
 }
 
 func readDir(dir string, ignores []string) {
@@ -82,9 +90,12 @@ func readDir(dir string, ignores []string) {
 		}
 
 		fi := &FileInfo{
-			Name: info.Name(),
-			Size: info.Size(),
-			Hash: FileSha1(path),
+			Name:         info.Name(),
+			Size:         info.Size(),
+			LastModified: info.ModTime().UnixNano(),
+			Type:         "",
+			Desc:         "",
+			Sha256:       FileSha256(path),
 		}
 
 		logrus.Debugf("File: %s", fi)
