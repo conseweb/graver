@@ -33,13 +33,16 @@ const (
 	api_doc_proof_result = "/poe/v1/documents/result"
 )
 
-func proof2POE() {
+func proof2POE(poes *DirPoes) {
 	for {
 		select {
 		case fi := <-waitFiles:
-			docId := docRegister(*wp, fi)
+			if fi.Name != fileName && poes.PutFile(fi) {
+				docId := docRegister(*wp, fi)
+				logrus.Infof("%s -> %s", docId, fi.Sha256)
+				poes.Files[fi.Sha256].Id = docId
+			}
 
-			logrus.Infof("%s -> %s", docId, fi.Sha256)
 			wg.Done()
 		}
 	}

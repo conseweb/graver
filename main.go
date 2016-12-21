@@ -25,22 +25,31 @@ import (
 )
 
 var (
-	rootpath    = kingpin.Flag("path", "target path of proof existence").Default(getCurrentDirectory()).String()
-	ignorePaths = kingpin.Flag("ignore", "ignore paths, default is empty").Strings()
-	hostpoe     = kingpin.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
-	wp          = kingpin.Flag("wp", "wait period, using duration string, default '1m'").Default("1m").String()
-
 	wg        = &sync.WaitGroup{}
 	waitFiles = make(chan *FileInfo, 1000)
+
+	initCmd   = kingpin.Command("init", "initial poe file")
+	submitCmd = kingpin.Command("submit", "submit files to poe platform")
+
+	ignorePaths = submitCmd.Flag("ignore", "ignore paths, default is empty").Strings()
+	hostpoe     = submitCmd.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
+	wp          = submitCmd.Flag("wp", "wait period, using duration string, default '1m'").Default("1m").String()
 )
 
 func main() {
-	kingpin.Parse()
 	logrus.SetLevel(logrus.InfoLevel)
+	curDir := getCurrentDirectory()
+	switch kingpin.Parse() {
+	case initCmd.FullCommand():
+		readOrcreatePoeResultFile(curDir)
+	case submitCmd.FullCommand():
+		poes := readOrcreatePoeResultFile(curDir)
+		go readDir(curDir, *ignorePaths)
+		go proof2POE(poes)
 
-	go readDir(*rootpath, *ignorePaths)
-	go proof2POE()
+		time.Sleep(time.Second)
+		wg.Wait()
 
-	time.Sleep(time.Second)
-	wg.Wait()
+		poes.Save(curDir)
+	}
 }
