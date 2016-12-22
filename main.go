@@ -29,11 +29,14 @@ var (
 	waitFiles = make(chan *FileInfo, 1000)
 
 	initCmd   = kingpin.Command("init", "initial poe file")
-	submitCmd = kingpin.Command("submit", "submit files to poe platform")
 
+	submitCmd = kingpin.Command("submit", "submit files to poe platform")
 	ignorePaths = submitCmd.Flag("ignore", "ignore paths, default is empty").Strings()
-	hostpoe     = submitCmd.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
+	hostpoe1     = submitCmd.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
 	wp          = submitCmd.Flag("wp", "wait period, using duration string, default '1m'").Default("1m").String()
+
+	verifyCmd = kingpin.Command("verify", "verify files which has been submited to the poe platform")
+	hostpoe2 = verifyCmd.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
 )
 
 func main() {
@@ -49,6 +52,20 @@ func main() {
 
 		time.Sleep(time.Second)
 		wg.Wait()
+
+		poes.Save(curDir)
+	case verifyCmd.FullCommand():
+		poes := readOrcreatePoeResultFile(curDir)
+		for key, file := range poes.Files {
+			if file.Proofed {
+				continue
+			}
+
+			rsp := docProofResult(file.Id)
+			if rsp.Status == "valid" {
+				poes.Files[key].Proofed = true
+			}
+		}
 
 		poes.Save(curDir)
 	}
