@@ -14,13 +14,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package main
+package utils
 
 import (
 	"os"
 )
 
-func getCurrentDirectory() string {
+// GetCurDir gets current directory
+func GetCurDir() string {
 	dir, err := os.Getwd()
 	if err != nil {
 		return ""

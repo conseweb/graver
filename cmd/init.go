@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package main
+package cmd
 
 import (
 	"encoding/json"
@@ -23,65 +23,27 @@ import (
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/conseweb/graver/file"
+	"github.com/conseweb/graver/utils"
 )
 
 const (
-	fileName = ".poe.json"
+	metadataFileName = ".poe.json"
 )
 
-type DirPoes struct {
-	Path  string              `json:"path"`
-	Count int                 `json:"count"`
-	Files map[string]*PoeFile `json:"files"`
+func StartInitCmd() {
+	curdir := utils.GetCurDir()
+	readOrcreatePoeResultFile(curdir)
 }
 
-type PoeFile struct {
-	Fi      *FileInfo `json:"fi"`
-	Id      string    `json:"id"`
-	Proofed bool      `json:"proofed"`
-}
-
-func (dp *DirPoes) Save(path string) {
-	if path == "" {
-		return
-	}
-
-	dpBytes, err := json.MarshalIndent(dp, "", "    ")
-	if err != nil {
-		logrus.Panic(err)
-	}
-
-	filePath := filepath.Join(path, fileName)
-	if err := ioutil.WriteFile(filePath, dpBytes, 0666); err != nil {
-		logrus.Panic(err)
-	}
-}
-
-func (dp *DirPoes) PutFile(fi *FileInfo) bool {
-	if _, ok := dp.Files[fi.Sha256]; ok {
-		return false
-	}
-
-	dp.Files[fi.Sha256] = &PoeFile{
-		Fi: fi,
-	}
-	dp.Count++
-	return true
-}
-
-func readOrcreatePoeResultFile(path string) *DirPoes {
-	dirPoes := &DirPoes{
+func readOrcreatePoeResultFile(path string) *file.DirPoes {
+	dirPoes := &file.DirPoes{
 		Path:  path,
-		Files: make(map[string]*PoeFile),
+		Files: make(map[string]*file.PoeFile),
 	}
-	filePath := filepath.Join(path, fileName)
+	filePath := filepath.Join(path, metadataFileName)
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		dpBytes, err := json.MarshalIndent(dirPoes, "", "   ")
-		if err != nil {
-			logrus.Panic(err)
-		}
-
-		ioutil.WriteFile(filePath, dpBytes, 0666)
+		dirPoes.Save(filePath)
 		return dirPoes
 	}
 
