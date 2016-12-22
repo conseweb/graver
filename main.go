@@ -17,56 +17,31 @@ limitations under the License.
 package main
 
 import (
-	"sync"
-	"time"
-
 	"github.com/Sirupsen/logrus"
+	"github.com/conseweb/graver/cmd"
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	wg        = &sync.WaitGroup{}
-	waitFiles = make(chan *FileInfo, 1000)
+	initCmd = kingpin.Command("init", "initial poe metadata file")
 
-	initCmd   = kingpin.Command("init", "initial poe file")
-
-	submitCmd = kingpin.Command("submit", "submit files to poe platform")
+	submitCmd   = kingpin.Command("submit", "submit files to poe platform")
 	ignorePaths = submitCmd.Flag("ignore", "ignore paths, default is empty").Strings()
-	hostpoe1     = submitCmd.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
-	wp          = submitCmd.Flag("wp", "wait period, using duration string, default '1m'").Default("1m").String()
+	submitHost  = submitCmd.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
+	waitperiod  = submitCmd.Flag("wp", "wait period, using duration string, default '1m'").Default("1m").String()
 
-	verifyCmd = kingpin.Command("verify", "verify files which has been submited to the poe platform")
-	hostpoe2 = verifyCmd.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
+	verifyCmd  = kingpin.Command("verify", "verify files which has been submited to the poe platform")
+	verifyHost = verifyCmd.Flag("host", "host of poe").Default("http://0.0.0.0:9694").String()
 )
 
 func main() {
 	logrus.SetLevel(logrus.InfoLevel)
-	curDir := getCurrentDirectory()
 	switch kingpin.Parse() {
 	case initCmd.FullCommand():
-		readOrcreatePoeResultFile(curDir)
+		cmd.StartInitCmd()
 	case submitCmd.FullCommand():
-		poes := readOrcreatePoeResultFile(curDir)
-		go readDir(curDir, *ignorePaths)
-		go proof2POE(poes)
-
-		time.Sleep(time.Second)
-		wg.Wait()
-
-		poes.Save(curDir)
+		cmd.StartSubmitCmd(*ignorePaths, *submitHost, *waitperiod)
 	case verifyCmd.FullCommand():
-		poes := readOrcreatePoeResultFile(curDir)
-		for key, file := range poes.Files {
-			if file.Proofed {
-				continue
-			}
-
-			rsp := docProofResult(file.Id)
-			if rsp.Status == "valid" {
-				poes.Files[key].Proofed = true
-			}
-		}
-
-		poes.Save(curDir)
+		cmd.StartVerifyCmd(*verifyHost)
 	}
 }

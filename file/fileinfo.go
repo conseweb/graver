@@ -14,7 +14,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package main
+package file
 
 import (
 	"crypto/sha256"
@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
-	"regexp"
 
 	"github.com/Sirupsen/logrus"
 )
@@ -62,47 +60,4 @@ func FileSha256(fpath string) string {
 	}
 
 	return fmt.Sprintf("%x", shaN.Sum(nil))
-}
-
-func readDir(dir string, ignores []string) {
-	if dir == "" {
-		dir = getCurrentDirectory()
-	}
-	dir, _ = filepath.Abs(dir)
-
-	if err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		logrus.Debugf("file path: %s", path)
-
-		if info == nil || err != nil {
-			return err
-		}
-
-		for _, ignore := range ignores {
-			match, _ := regexp.MatchString(ignore, path)
-			if match {
-				logrus.Debugf("file<%v> match ignore<%v>", path, ignore)
-				return nil
-			}
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		fi := &FileInfo{
-			Name:         info.Name(),
-			Size:         info.Size(),
-			LastModified: info.ModTime().UnixNano(),
-			Type:         "",
-			Desc:         "",
-			Sha256:       FileSha256(path),
-		}
-
-		logrus.Debugf("File: %s", fi)
-		wg.Add(1)
-		waitFiles <- fi
-		return nil
-	}); err != nil {
-		logrus.Panic(err)
-	}
 }
