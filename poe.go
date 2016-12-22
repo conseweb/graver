@@ -30,7 +30,7 @@ const (
 	// api url for document proof status
 	api_doc_proof_status = "/poe/v1/documents/%s/status"
 	// api url for proof result check
-	api_doc_proof_result = "/poe/v1/documents/result"
+	api_doc_proof_result = "/poe/v1/documents/%s/result"
 )
 
 func proof2POE(poes *DirPoes) {
@@ -50,7 +50,7 @@ func proof2POE(poes *DirPoes) {
 
 func docRegister(wp string, fi *FileInfo) string {
 	submitResp := new(api.DocumentSubmitResponse)
-	_, _, errs := gorequest.New().Post(fmt.Sprintf("%s%s", *hostpoe, api_doc_reg)).Type("json").Send(map[string]string{
+	_, _, errs := gorequest.New().Post(fmt.Sprintf("%s%s", *hostpoe1, api_doc_reg)).Type("json").Send(map[string]string{
 		"proofWaitPeriod": wp,
 		"rawDocument":     fi.Raw(),
 		"metadata":        fi.Metadata(),
@@ -64,7 +64,7 @@ func docRegister(wp string, fi *FileInfo) string {
 
 func docProofStatus(docId string) *api.GetProofStatusResponse {
 	statusResp := new(api.GetProofStatusResponse)
-	_, _, errs := gorequest.New().Get(fmt.Sprintf("%s%s", *hostpoe, fmt.Sprintf(api_doc_proof_status, docId))).EndStruct(statusResp)
+	_, _, errs := gorequest.New().Get(fmt.Sprintf("%s%s", *hostpoe2, fmt.Sprintf(api_doc_proof_status, docId))).EndStruct(statusResp)
 	if len(errs) != 0 {
 		panic(errs[0])
 	}
@@ -76,17 +76,15 @@ func docProofStatus(docId string) *api.GetProofStatusResponse {
 	return statusResp
 }
 
-func docProofResult(data string) *api.GetProofResponse {
+func docProofResult(docId string) *api.GetProofResponse {
 	proofResp := new(api.GetProofResponse)
-	_, _, errs := gorequest.New().Post(fmt.Sprintf("%s%s", *hostpoe, api_doc_proof_result)).Type("json").Send(map[string]string{
-		"rawDocument": data,
-	}).EndStruct(proofResp)
+	_, _, errs := gorequest.New().Get(fmt.Sprintf("%s%s", *hostpoe2, fmt.Sprintf(api_doc_proof_result, docId))).EndStruct(proofResp)
 	if len(errs) != 0 {
-		panic(errs[0])
+		logrus.Panic(errs[0])
 	}
 
 	if proofResp.Status == "none" || proofResp.Status == "invalid" {
-		panic(fmt.Errorf("document proof failure."))
+		logrus.Panic(fmt.Errorf("document proof failure."))
 	}
 
 	return proofResp
