@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sync"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/conseweb/graver/file"
@@ -16,10 +15,11 @@ import (
 )
 
 var (
-	wg        = &sync.WaitGroup{}
-	waitFiles = make(chan *file.FileInfo, 1000)
+	wg         = &sync.WaitGroup{}
+	waitFiles  = make(chan *file.FileInfo, 1000)
 	submitHost string
 	waitperiod string
+	readOver   = make(chan int)
 )
 
 func StartSubmitCmd(ignorePaths []string, host, wp string) {
@@ -31,7 +31,7 @@ func StartSubmitCmd(ignorePaths []string, host, wp string) {
 	go readDir(curdir, ignorePaths)
 	go proof2POE(poes)
 
-	time.Sleep(time.Second)
+	<-readOver
 	wg.Wait()
 
 	poes.Save(filepath.Join(curdir, metadataFileName))
@@ -75,8 +75,9 @@ func readDir(dir string, ignores []string) {
 	}); err != nil {
 		logrus.Panic(err)
 	}
-}
 
+	readOver <- 1
+}
 
 func proof2POE(poes *file.DirPoes) {
 	for {
